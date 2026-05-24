@@ -1,0 +1,185 @@
+run:
+  name: dcu_llm_regression
+  base_port: 18000
+  output_dir: results
+  report_dir: reports
+  parallel_services: 3
+  cleanup_after_case: true
+  service_ready_timeout_sec: 900
+  smoke_prompt: "请用一句话回答：海光 DCU 推理服务是否已经启动？"
+
+environments:
+  - name: nmz
+    host_label: nmz
+    dcu_arch: nmz
+    device_env:
+      HSA_FORCE_FINE_GRAIN_PCIE: "1"
+  - name: bmz
+    host_label: bmz
+    dcu_arch: bmz
+    device_env:
+      HSA_FORCE_FINE_GRAIN_PCIE: "1"
+  - name: kme
+    host_label: kme
+    dcu_arch: kme
+    device_env:
+      HSA_FORCE_FINE_GRAIN_PCIE: "1"
+
+images:
+  - name: vllm_iter_001
+    framework: vllm
+    image: registry.example.com/dcu/vllm:iter-001
+    baseline: true
+    mode: create_container
+  - name: vllm_iter_002
+    framework: vllm
+    image: registry.example.com/dcu/vllm:iter-002
+    mode: create_container
+  - name: sglang_iter_001
+    framework: sglang
+    image: registry.example.com/dcu/sglang:iter-001
+    baseline: true
+    mode: create_container
+
+models:
+  - family: qwen
+    name: qwen2_5_7b_instruct
+    served_model_name: qwen2.5-7b-instruct
+    path: /models/Qwen2.5-7B-Instruct
+    tp: 1
+    cards: "0"
+    max_model_len: 32768
+    frameworks: [vllm, sglang]
+    accuracy: [gsm8k, math500, humaneval]
+
+  - family: qwen
+    name: qwen2_5_vl_7b_instruct
+    served_model_name: qwen2.5-vl-7b-instruct
+    path: /models/Qwen2.5-VL-7B-Instruct
+    tp: 1
+    cards: "1"
+    max_model_len: 32768
+    frameworks: [vllm, sglang]
+    accuracy: [mmmu]
+
+  - family: dpsk
+    name: dpsk_r1_distill_qwen_32b
+    served_model_name: dpsk-r1-distill-qwen-32b
+    path: /models/DeepSeek-R1-Distill-Qwen-32B
+    tp: 4
+    cards: "0,1,2,3"
+    max_model_len: 65536
+    frameworks: [vllm, sglang]
+    accuracy: [gsm8k, math500, humaneval]
+
+  - family: glm
+    name: glm5_9b_chat
+    served_model_name: glm5-9b-chat
+    path: /models/GLM-5-9B-Chat
+    tp: 1
+    cards: "2"
+    max_model_len: 32768
+    frameworks: [vllm, sglang]
+    accuracy: [gsm8k, math500]
+
+  - family: kimi
+    name: kimi2_5
+    served_model_name: kimi2.5
+    path: /models/Kimi-2.5
+    tp: 4
+    cards: "0,1,2,3"
+    max_model_len: 65536
+    frameworks: [vllm, sglang]
+    accuracy: [gsm8k, math500, humaneval]
+
+  - family: minimax
+    name: minimax_text_01
+    served_model_name: minimax-text-01
+    path: /models/MiniMax-Text-01
+    tp: 4
+    cards: "0,1,2,3"
+    max_model_len: 65536
+    frameworks: [vllm, sglang]
+    accuracy: [gsm8k, math500]
+
+service:
+  docker_common:
+    network: host
+    ipc: host
+    privileged: true
+    devices:
+      - /dev/kfd
+      - /dev/dri
+    volumes:
+      - /models:/models:ro
+      - ./results:/results
+      - ./reports:/reports
+  vllm_command: >
+    vllm serve {model_path}
+    --host 0.0.0.0
+    --port {port}
+    --served-model-name {served_model_name}
+    --tensor-parallel-size {tp}
+    --max-model-len {max_model_len}
+    --gpu-memory-utilization 0.90
+    --trust-remote-code
+    --disable-log-requests
+  sglang_command: >
+    python -m sglang.launch_server
+    --model-path {model_path}
+    --host 0.0.0.0
+    --port {port}
+    --served-model-name {served_model_name}
+    --tp-size {tp}
+    --context-length {max_model_len}
+    --trust-remote-code
+
+accuracy:
+  backend: opencompass
+  output_dir: results/accuracy
+  temperature: 0
+  top_p: 1
+  max_tokens: 2048
+  # 按本地 OpenCompass 配置改造。占位符由脚本替换。
+  command_template: >
+    opencompass
+    --models {opencompass_model_config}
+    --datasets {datasets}
+    --work-dir {work_dir}
+  opencompass_model_config: configs/opencompass/openai_api_model.py
+  dataset_map:
+    gsm8k: gsm8k
+    math500: math500
+    humaneval: humaneval
+    mmmu: mmmu
+
+performance:
+  output_dir: results/perf
+  dataset: random
+  num_prompts: 1000
+  request_rate: inf
+  cases:
+    - name: short_2k_1k
+      input_len: 2048
+      output_len: 1024
+      sla:
+        ttft_ms: 3
+        tpot_ms: 50
+    - name: long_64k_1k
+      input_len: 65536
+      output_len: 1024
+      sla:
+        ttft_ms: 30
+        tpot_ms: 100
+  concurrencies: [1, 4, 16, 64]
+
+baseline:
+  summary_file: results/baseline/summary.json
+
+thresholds:
+  accuracy_abs_drop: 0.005
+  humaneval_pass_at_1_abs_drop: 0.01
+  throughput_drop_ratio: 0.05
+  ttft_p99_increase_ratio: 0.10
+  tpot_p99_increase_ratio: 0.10
+  max_error_rate: 0

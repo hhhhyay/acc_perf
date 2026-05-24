@@ -1,0 +1,3 @@
+display_name: DCU LLM Regression
+short_description: Automate DCU LLM image-iteration accuracy and performance regression testing.
+default_prompt: Create or run an automated DCU LLM regression workflow for vLLM/SGLang images, including accuracy, performance, comparison, and report generation.
