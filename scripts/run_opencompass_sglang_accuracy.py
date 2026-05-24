@@ -112,11 +112,12 @@ def start_server(model: dict[str, Any], env_base: dict[str, str], log_path: Path
     env.update(env_base)
     env.update(model.get("server_env", {}))
     env["HIP_VISIBLE_DEVICES"] = model["devices"]
-    print("SERVER:", " ".join(cmd), flush=True)
+    env["CUDA_VISIBLE_DEVICES"] = model["devices"]
+    print(f"SERVER: HIP_VISIBLE_DEVICES={model['devices']} " + " ".join(cmd), flush=True)
     if dry_run:
         return None
     log_handle = log_path.open("a", encoding="utf-8")
-    log_handle.write("$ " + " ".join(cmd) + "\n")
+    log_handle.write(f"$ HIP_VISIBLE_DEVICES={model['devices']} CUDA_VISIBLE_DEVICES={model['devices']} " + " ".join(cmd) + "\n")
     log_handle.flush()
     proc = subprocess.Popen(cmd, stdout=log_handle, stderr=subprocess.STDOUT, text=True, env=env)
     setattr(proc, "_acc_perf_log_handle", log_handle)

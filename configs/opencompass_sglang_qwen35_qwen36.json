@@ -160,7 +160,71 @@
         "--page-size", "64",
         "--kv-cache-dtype", "fp8_e4m3",
         "--mem-fraction-static", "0.9",
-        "--disable-radix-cache",
+        "--disable-radix-cache"
+      ]
+    },
+    {
+      "name": "qwen36_27b",
+      "abbr": "Qwen3.6-27B",
+      "served_model_name": "Qwen3.6-27B",
+      "model_path": "/model/qwen3.6/Qwen3.6-27B",
+      "port": 30007,
+      "devices": "2,3",
+      "tp_size": 2,
+      "batch_size": 32,
+      "query_per_second": 64,
+      "max_seq_len": 32768,
+      "max_out_len": 32768,
+      "server_env": {
+        "SGLANG_ENABLE_SPEC_V2": "1"
+      },
+      "server_args": [
+        "--tp-size", "2",
+        "--trust-remote-code",
+        "--mm-attention-backend", "fa3",
+        "--speculative-algorithm", "EAGLE",
+        "--speculative-num-steps", "3",
+        "--speculative-eagle-topk", "1",
+        "--speculative-num-draft-tokens", "4",
+        "--pp-size", "1",
+        "--attention-backend", "fa3",
+        "--page-size", "64",
+        "--mamba-scheduler-strategy", "extra_buffer",
+        "--kv-cache-dtype", "fp8_e4m3",
+        "--chunked-prefill-size", "-1"
+      ]
+    },
+    {
+      "name": "qwen36_35b_a3b",
+      "abbr": "Qwen3.6-35B-A3B",
+      "served_model_name": "Qwen3.6-35B-A3B",
+      "model_path": "/model/qwen3.6/Qwen3.6-35B-A3B",
+      "port": 30008,
+      "devices": "4,5",
+      "tp_size": 2,
+      "batch_size": 32,
+      "query_per_second": 64,
+      "max_seq_len": 32768,
+      "max_out_len": 32768,
+      "server_env": {
+        "SGLANG_ENABLE_SPEC_V2": "1",
+        "SGLANG_USE_CUDA_IPC_TRANSPORT": "1",
+        "SGLANG_USE_MARLIN_W16A16_MOE": "1"
+      },
+      "server_args": [
+        "--tp-size", "2",
+        "--trust-remote-code",
+        "--mm-attention-backend", "fa3",
+        "--speculative-algorithm", "EAGLE",
+        "--enable-piecewise-cuda-graph",
+        "--speculative-num-steps", "3",
+        "--speculative-eagle-topk", "1",
+        "--speculative-num-draft-tokens", "4",
+        "--pp-size", "1",
+        "--attention-backend", "fa3",
+        "--page-size", "64",
+        "--mamba-scheduler-strategy", "extra_buffer",
+        "--kv-cache-dtype", "fp8_e4m3",
         "--chunked-prefill-size", "-1"
       ]
     }
@@ -171,8 +235,8 @@
       "models": ["qwen35_27b", "qwen35_35b_a3b", "qwen35_397b_a17b"]
     },
     {
-      "name": "qwen35_remaining_2",
-      "models": ["qwen35_35b_a3b_channel_fp8"]
+      "name": "qwen35_qwen36_2_2_2",
+      "models": ["qwen35_35b_a3b_channel_fp8", "qwen36_27b", "qwen36_35b_a3b"]
     }
   ]
 }
